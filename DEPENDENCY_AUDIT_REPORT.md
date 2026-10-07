@@ -131,7 +131,7 @@ All direct dependencies were checked against the npm registry. The table below s
 
 | Package | Current (Pinned) | Latest Available | Status |
 |---|---|---|---|
-| `Click` | 7.0 | 8.1.8 | :red_circle: Major version behind |
+| `Click` | 7.0 | 8.1.8 (Python 3.9 max) / 8.5.0 (Python 3.10+) | :red_circle: Major version behind |
 | `Flask` | 1.1.1 | 3.1.3 | :red_circle: Multiple major versions behind |
 | `itsdangerous` | 1.1.0 | 2.2.0 | :red_circle: Major version behind |
 | `Jinja2` | 2.11.3 | 3.1.6 | :red_circle: Major version behind |
@@ -270,17 +270,22 @@ host='0.0.0.0'
    - Werkzeug 0.15.6 has 10 known vulnerabilities. Update to 3.1.9.
    - Jinja2 2.11.3 has 4 known vulnerabilities including sandbox escapes. Update to 3.1.6.
    - Flask 1.1.1 has 2 known vulnerabilities. Update to 3.1.3.
-   - Click 7.0 has 1 command injection vulnerability. Update to 8.1.8.
+   - Click 7.0 has 1 command injection vulnerability (CVE-2026-7246). The fix is in Click 8.3.3, but that version requires Python >= 3.10. The Dockerfile's base image (`amazonlinux:2022`) ships Python 3.9, so Click 8.3.3 cannot be installed without first upgrading the base image to one that provides Python 3.10+. The highest Click version installable on Python 3.9 is 8.1.8, which does **not** contain the CVE fix. To fully remediate this vulnerability, upgrade the Dockerfile base image to a Python 3.10+ environment (e.g., `python:3.12-slim` or a newer Amazon Linux with Python 3.11+), then pin `Click==8.3.3`.
    - Update `requirements.txt` to:
      ```
+     blinker==1.9.0
      Click==8.1.8
      Flask==3.1.3
+     importlib-metadata==8.7.1
      itsdangerous==2.2.0
      Jinja2==3.1.6
      MarkupSafe==3.0.4
      Werkzeug==3.1.9
+     zipp==3.23.1
      ```
+   - Note: `blinker`, `importlib-metadata`, and `zipp` are new transitive dependencies required by Flask 3.x that were not present in Flask 1.x. They are included here so that the `requirements.txt` serves as a complete pinned lockfile.
    - Note: Upgrading from Flask 1.x to 3.x is a major version jump and may require code changes.
+   - Note: Once the base image is upgraded to Python 3.10+, change the Click pin to `Click==8.3.3` to fully resolve CVE-2026-7246.
 
 3. **Fix the Dockerfile to use `requirements.txt`**
    - Replace `pip install flask` with `pip install -r requirements.txt` so that pinned dependency versions are respected.
