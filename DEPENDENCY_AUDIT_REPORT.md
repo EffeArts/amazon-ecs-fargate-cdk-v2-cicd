@@ -14,14 +14,17 @@ This report presents the findings of a comprehensive dependency and security aud
 
 | Category | Count |
 |---|---|
-| Node.js (npm) vulnerabilities | **31** (2 critical, 11 high, 7 moderate, 11 low) |
+| Node.js (npm) vulnerable packages | **31** packages in the dependency tree |
+| Node.js (npm) individual advisories | **48** (2 critical, 24 high, 15 moderate, 7 low) |
 | Node.js outdated packages | **10** packages behind latest |
 | Python (pip) vulnerabilities | **17** known CVEs across 4 packages |
 | Python outdated packages | **5 of 6** packages behind latest |
 | Dockerfile security issues | **4** findings |
 | Code security observations | **3** findings |
 
-The overall risk posture is **high**. Both the Node.js and Python dependency sets contain critical and high-severity vulnerabilities, several with known CVE identifiers. The Dockerfile also has security weaknesses that should be addressed.
+> **Note:** This is a sample/demo repository intended for learning and reference. The vulnerabilities documented here are real, and the CDK stack does deploy real AWS infrastructure with IAM roles when used, so these concerns are not purely academic. However, the risk profile differs from a production application -- the likelihood of long-running production deployments based on this sample is lower. Readers should calibrate remediation urgency accordingly based on their actual usage.
+
+The overall risk posture is **high** if this code is used as-is in a production environment. Both the Node.js and Python dependency sets contain critical and high-severity vulnerabilities, several with known CVE identifiers. The Dockerfile also has security weaknesses that should be addressed.
 
 ---
 
@@ -46,33 +49,26 @@ All direct dependencies were checked against the npm registry. The table below s
 
 ### 2.2 Vulnerability Scan (npm audit)
 
-**Summary:** 31 vulnerabilities found (2 critical, 11 high, 7 moderate, 11 low)
+**Summary:** 31 vulnerable packages in the dependency tree, corresponding to 48 individual security advisories (2 critical, 24 high, 15 moderate, 7 low).
 
-#### Critical Severity
+> **Metrics note:** `npm audit` reports "31 vulnerabilities," which counts unique vulnerable *package nodes* in the dependency tree. A single vulnerable package can have multiple advisories (e.g., `brace-expansion` has 8 advisories, `aws-cdk-lib` has 7). The tables below list all 48 individual advisories, classified by each advisory's own severity rating rather than the package-level aggregate severity that npm assigns.
+
+#### Critical Severity (2 advisories)
 
 | Package | Advisory | Description |
 |---|---|---|
 | `@babel/traverse` | [GHSA-67hx-6x53-jw92](https://github.com/advisories/GHSA-67hx-6x53-jw92) | Arbitrary code execution when compiling specifically crafted malicious code |
 | `form-data` | [GHSA-fjxv-7rqg-78g4](https://github.com/advisories/GHSA-fjxv-7rqg-78g4) | Unsafe random function used for choosing multipart boundary |
-| `form-data` | [GHSA-hmw2-7cc7-3qxx](https://github.com/advisories/GHSA-hmw2-7cc7-3qxx) | CRLF injection via unescaped multipart field names and filenames |
 
-#### High Severity
+#### High Severity (24 advisories)
 
 | Package | Advisory | Description |
 |---|---|---|
-| `aws-cdk-lib` | [GHSA-rx28-r23p-2qc3](https://github.com/advisories/GHSA-rx28-r23p-2qc3) | EKS overly permissive trust policies |
-| `aws-cdk-lib` | [GHSA-v4mq-x674-ff73](https://github.com/advisories/GHSA-v4mq-x674-ff73) | IAM OIDC custom resource allows connection to unauthorized OIDC provider |
-| `aws-cdk-lib` | [GHSA-qq4x-c6h6-rfxh](https://github.com/advisories/GHSA-qq4x-c6h6-rfxh) | Insertion of Sensitive Information into Log File (Cognito UserPoolClient) |
-| `aws-cdk-lib` | [GHSA-5pq3-h73f-66hr](https://github.com/advisories/GHSA-5pq3-h73f-66hr) | CodePipeline trusted entities are too broad |
 | `aws-cdk-lib` | [GHSA-999r-qq7v-r334](https://github.com/advisories/GHSA-999r-qq7v-r334) | OS Command Injection in NodejsFunction Bundling |
 | `aws-cdk-lib` | [GHSA-vcrf-j523-4mrf](https://github.com/advisories/GHSA-vcrf-j523-4mrf) | OS Command Injection in NodejsFunction Docker Bundling |
-| `aws-cdk-lib` | [GHSA-464c-974j-9xm6](https://github.com/advisories/GHSA-464c-974j-9xm6) | CodeBuild S3 Log Encryption Boolean Inversion |
-| `brace-expansion` | [GHSA-v6h2-p8h4-qcjw](https://github.com/advisories/GHSA-v6h2-p8h4-qcjw) | Regular Expression Denial of Service |
-| `brace-expansion` | [GHSA-f886-m6hf-6m8v](https://github.com/advisories/GHSA-f886-m6hf-6m8v) | Zero-step sequence causes process hang and memory exhaustion |
 | `brace-expansion` | [GHSA-3jxr-9vmj-r5cp](https://github.com/advisories/GHSA-3jxr-9vmj-r5cp) | DoS via exponential-time expansion |
 | `brace-expansion` | [GHSA-mh99-v99m-4gvg](https://github.com/advisories/GHSA-mh99-v99m-4gvg) | DoS via unbounded expansion length (out-of-memory) |
 | `brace-expansion` | [GHSA-rgw5-rvv9-x895](https://github.com/advisories/GHSA-rgw5-rvv9-x895) | DoS bypassing CVE-2026-14257 mitigation |
-| `brace-expansion` | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) | Quadratic-time expansion causes CPU DoS |
 | `brace-expansion` | [GHSA-qhr7-859c-m2p7](https://github.com/advisories/GHSA-qhr7-859c-m2p7) | DoS via uncontrolled recursion (stack exhaustion) |
 | `brace-expansion` | [GHSA-6j4f-fj2g-mc7p](https://github.com/advisories/GHSA-6j4f-fj2g-mc7p) | DoS via uncontrolled recursion in parseCommaParts |
 | `braces` | [GHSA-grv7-fg5c-xmjg](https://github.com/advisories/GHSA-grv7-fg5c-xmjg) | Uncontrolled resource consumption |
@@ -80,43 +76,52 @@ All direct dependencies were checked against the npm registry. The table below s
 | `browserslist` | [GHSA-c83g-rgw3-j3cx](https://github.com/advisories/GHSA-c83g-rgw3-j3cx) | Unbounded memory growth leading to OOM |
 | `browserslist` | [GHSA-73wf-gq98-2v4g](https://github.com/advisories/GHSA-73wf-gq98-2v4g) | Uncaught crash via untrusted custom stats |
 | `cross-spawn` | [GHSA-3xgq-45jj-v275](https://github.com/advisories/GHSA-3xgq-45jj-v275) | Regular Expression Denial of Service (ReDoS) |
-| `js-yaml` | [GHSA-mh29-5h37-fv8m](https://github.com/advisories/GHSA-mh29-5h37-fv8m) | Prototype pollution in merge key |
-| `js-yaml` | [GHSA-h67p-54hq-rp68](https://github.com/advisories/GHSA-h67p-54hq-rp68) | Quadratic-complexity DoS in merge key handling |
+| `form-data` | [GHSA-hmw2-7cc7-3qxx](https://github.com/advisories/GHSA-hmw2-7cc7-3qxx) | CRLF injection via unescaped multipart field names and filenames |
 | `js-yaml` | [GHSA-52cp-r559-cp3m](https://github.com/advisories/GHSA-52cp-r559-cp3m) | YAML merge-key chains force quadratic CPU consumption |
 | `js-yaml` | [GHSA-5p4m-2wfm-xmqj](https://github.com/advisories/GHSA-5p4m-2wfm-xmqj) | Quadratic CPU consumption in !!omap resolution |
 | `js-yaml` | [GHSA-2883-xcg3-v3hh](https://github.com/advisories/GHSA-2883-xcg3-v3hh) | maxTotalMergeKeys does not limit CPU for empty merge sources |
 | `lodash` | [GHSA-r5fr-rjxr-66jc](https://github.com/advisories/GHSA-r5fr-rjxr-66jc) | Code Injection via `_.template` imports key names |
-| `lodash` | [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh) | Prototype Pollution via array path bypass in `_.unset`/`_.omit` |
-| `lodash` | [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg) | Prototype Pollution in `_.unset` and `_.omit` functions |
 | `minimatch` | [GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26) | ReDoS via repeated wildcards |
 | `minimatch` | [GHSA-7r86-cg39-jmmj](https://github.com/advisories/GHSA-7r86-cg39-jmmj) | ReDoS: matchOne() combinatorial backtracking |
 | `minimatch` | [GHSA-23c5-xmqv-rm74](https://github.com/advisories/GHSA-23c5-xmqv-rm74) | ReDoS: nested extglobs generate catastrophic backtracking |
-| `picomatch` | [GHSA-3v7f-55p6-f55p](https://github.com/advisories/GHSA-3v7f-55p6-f55p) | Method Injection in POSIX Character Classes |
 | `picomatch` | [GHSA-c2c7-rcm5-vvqj](https://github.com/advisories/GHSA-c2c7-rcm5-vvqj) | ReDoS via extglob quantifiers |
 | `semver` | [GHSA-c2qf-rxjj-qqgw](https://github.com/advisories/GHSA-c2qf-rxjj-qqgw) | Regular Expression Denial of Service |
 | `ws` | [GHSA-3h5v-q93c-6h6q](https://github.com/advisories/GHSA-3h5v-q93c-6h6q) | DoS when handling a request with many HTTP headers |
 | `ws` | [GHSA-96hv-2xvq-fx4p](https://github.com/advisories/GHSA-96hv-2xvq-fx4p) | Memory exhaustion DoS from tiny fragments and data chunks |
 
-#### Moderate Severity
+#### Moderate Severity (15 advisories)
 
 | Package | Advisory | Description |
 |---|---|---|
 | `@babel/helpers` | [GHSA-968p-4wvh-cqc8](https://github.com/advisories/GHSA-968p-4wvh-cqc8) | Inefficient RegExp complexity in generated code |
+| `aws-cdk-lib` | [GHSA-rx28-r23p-2qc3](https://github.com/advisories/GHSA-rx28-r23p-2qc3) | EKS overly permissive trust policies |
+| `aws-cdk-lib` | [GHSA-qq4x-c6h6-rfxh](https://github.com/advisories/GHSA-qq4x-c6h6-rfxh) | Insertion of Sensitive Information into Log File (Cognito UserPoolClient) |
+| `brace-expansion` | [GHSA-f886-m6hf-6m8v](https://github.com/advisories/GHSA-f886-m6hf-6m8v) | Zero-step sequence causes process hang and memory exhaustion |
+| `brace-expansion` | [GHSA-q2hr-2g5m-vwhr](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) | Quadratic-time expansion causes CPU DoS |
+| `js-yaml` | [GHSA-mh29-5h37-fv8m](https://github.com/advisories/GHSA-mh29-5h37-fv8m) | Prototype pollution in merge key |
+| `js-yaml` | [GHSA-h67p-54hq-rp68](https://github.com/advisories/GHSA-h67p-54hq-rp68) | Quadratic-complexity DoS in merge key handling |
+| `lodash` | [GHSA-f23m-r3pf-42rh](https://github.com/advisories/GHSA-f23m-r3pf-42rh) | Prototype Pollution via array path bypass in `_.unset`/`_.omit` |
+| `lodash` | [GHSA-xxjr-mmjv-4gpg](https://github.com/advisories/GHSA-xxjr-mmjv-4gpg) | Prototype Pollution in `_.unset` and `_.omit` functions |
 | `micromatch` | [GHSA-952p-6rrq-rcjv](https://github.com/advisories/GHSA-952p-6rrq-rcjv) | Regular Expression Denial of Service (ReDoS) |
+| `picomatch` | [GHSA-3v7f-55p6-f55p](https://github.com/advisories/GHSA-3v7f-55p6-f55p) | Method Injection in POSIX Character Classes |
 | `sprintf-js` | [GHSA-hp3w-g68c-fv3c](https://github.com/advisories/GHSA-hp3w-g68c-fv3c) | DoS through unbounded precision specifiers |
 | `tough-cookie` | [GHSA-72xf-g2v4-qvf3](https://github.com/advisories/GHSA-72xf-g2v4-qvf3) | Prototype Pollution vulnerability |
 | `word-wrap` | [GHSA-j8xg-fqg3-53r7](https://github.com/advisories/GHSA-j8xg-fqg3-53r7) | Regular Expression Denial of Service |
 | `yaml` | [GHSA-48c2-rrv3-qjmp](https://github.com/advisories/GHSA-48c2-rrv3-qjmp) | Stack Overflow via deeply nested YAML collections |
 
-#### Low Severity
+#### Low Severity (7 advisories)
 
 | Package | Advisory | Description |
 |---|---|---|
 | `@babel/core` | [GHSA-4x5r-pxfx-6jf8](https://github.com/advisories/GHSA-4x5r-pxfx-6jf8) | Arbitrary File Read via sourceMappingURL Comment |
 | `@tootallnate/once` | [GHSA-vpq2-c234-7xj6](https://github.com/advisories/GHSA-vpq2-c234-7xj6) | Incorrect Control Flow Scoping |
+| `aws-cdk-lib` | [GHSA-v4mq-x674-ff73](https://github.com/advisories/GHSA-v4mq-x674-ff73) | IAM OIDC custom resource allows connection to unauthorized OIDC provider |
+| `aws-cdk-lib` | [GHSA-5pq3-h73f-66hr](https://github.com/advisories/GHSA-5pq3-h73f-66hr) | CodePipeline trusted entities are too broad |
+| `aws-cdk-lib` | [GHSA-464c-974j-9xm6](https://github.com/advisories/GHSA-464c-974j-9xm6) | CodeBuild S3 Log Encryption Boolean Inversion |
+| `brace-expansion` | [GHSA-v6h2-p8h4-qcjw](https://github.com/advisories/GHSA-v6h2-p8h4-qcjw) | Regular Expression Denial of Service |
 | `diff` | [GHSA-73rr-hh4g-fpgx](https://github.com/advisories/GHSA-73rr-hh4g-fpgx) | DoS in parsePatch and applyPatch |
 
-> **Note:** Several low-severity packages (e.g., `http-proxy-agent`, `jsdom`, `jest-environment-jsdom`, `jest-config`, `@jest/core`, `jest`, `jest-cli`, `jest-runner`, `argparse`) are flagged because they transitively depend on the vulnerable packages listed above. These transitive dependencies account for the remaining vulnerability count entries reaching 31 total.
+> **Note:** The 31 vulnerable package count from `npm audit` includes packages that are flagged solely because they transitively depend on the vulnerable packages listed above (e.g., `http-proxy-agent`, `jsdom`, `jest-environment-jsdom`, `jest-config`, `@jest/core`, `jest`, `jest-cli`, `jest-runner`, `argparse`). These transitive entries do not introduce additional advisories beyond those already listed in the tables.
 
 ---
 
@@ -159,7 +164,7 @@ All direct dependencies were checked against the npm registry. The table below s
 | [CVE-2024-34064](https://osv.dev/vulnerability/PYSEC-2026-1474) (PYSEC-2026-1474) | 3.1.4 | `xmlattr` filter accepts keys containing `/`, `>`, `=` and other non-attribute characters, enabling XSS. |
 | [CVE-2024-56326](https://osv.dev/vulnerability/PYSEC-2026-1475) (PYSEC-2026-1475) | 3.1.5 | Indirect calls to `str.format` bypass sandbox detection, allowing arbitrary Python code execution when an attacker controls template content. |
 
-#### Werkzeug 0.15.6 (11 vulnerabilities)
+#### Werkzeug 0.15.6 (10 vulnerabilities)
 
 | CVE / ID | Fix Version | Description |
 |---|---|---|
@@ -262,7 +267,7 @@ host='0.0.0.0'
    - Run: `npm install aws-cdk-lib@latest aws-cdk@latest`
 
 2. **Upgrade all Python dependencies to their latest versions**
-   - Werkzeug 0.15.6 has 11 known vulnerabilities. Update to 3.1.9.
+   - Werkzeug 0.15.6 has 10 known vulnerabilities. Update to 3.1.9.
    - Jinja2 2.11.3 has 4 known vulnerabilities including sandbox escapes. Update to 3.1.6.
    - Flask 1.1.1 has 2 known vulnerabilities. Update to 3.1.3.
    - Click 7.0 has 1 command injection vulnerability. Update to 8.1.8.
