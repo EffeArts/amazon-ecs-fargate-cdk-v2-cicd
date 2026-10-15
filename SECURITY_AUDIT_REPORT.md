@@ -121,32 +121,38 @@ Audit performed using `pip-audit -r requirements.txt`. Found **29 known vulnerab
 
 | CVE / ID | Description | Fix Version |
 |----------|------------|-------------|
-| PYSEC-2023-62 | Known vulnerability in Flask 1.1.1 | 2.2.5 or 2.3.2 |
-| PYSEC-2026-2151 | Known vulnerability in Flask 1.1.1 | 3.1.3 |
+| PYSEC-2023-62 | Session caching vulnerability: when specific conditions are met (app behind a caching proxy, `session.permanent = True`, session not accessed during request, `SESSION_REFRESH_EACH_REQUEST` enabled), a response intended for one client may be cached and sent to other clients, potentially leaking session cookies | 2.2.5 or 2.3.2 |
+| PYSEC-2026-2151 | Session `Vary: Cookie` header bypass: when the `session` object is accessed in ways that only touch keys without reading values or mutating the session (e.g., the Python `in` operator), Flask fails to set the `Vary: Cookie` header, allowing caches to serve responses containing user-specific data to other clients | 3.1.3 |
+
+> **Note:** PYSEC-2026-2151 carries a 2026-series identifier as assigned by the PyPI advisory database. These IDs are assigned sequentially and do not necessarily correspond to the calendar year of disclosure. The vulnerability details were verified against the pip-audit output at the time of this audit.
 
 ### Jinja2 2.11.3
 
 | CVE / ID | Description | Fix Version |
 |----------|------------|-------------|
-| PYSEC-2026-1471 | Known vulnerability in Jinja2 2.11.3 | 3.1.6 |
-| PYSEC-2026-1473 | Known vulnerability in Jinja2 2.11.3 | 3.1.3 |
-| PYSEC-2026-1474 | Known vulnerability in Jinja2 2.11.3 | 3.1.4 |
-| PYSEC-2026-1475 | Known vulnerability in Jinja2 2.11.3 | 3.1.5 |
+| PYSEC-2026-1473 | `xmlattr` filter XSS via spaces in keys: the `xmlattr` filter accepts keys containing spaces, which are then interpreted as separate HTML/XML attributes, allowing attribute injection and XSS if an application renders user-controlled keys | 3.1.3 |
+| PYSEC-2026-1474 | `xmlattr` filter XSS via non-attribute characters in keys: extends the prior `xmlattr` vulnerability to cover additional non-attribute characters (`/`, `>`, `=`) that the earlier fix for CVE-2024-22195 did not address | 3.1.4 |
+| PYSEC-2026-1475 | Sandbox escape via indirect `str.format` call: an attacker controlling template content can store a reference to a malicious string's `format` method and pass it to a filter that calls it, bypassing the sandbox's detection of `str.format` calls, enabling arbitrary Python code execution | 3.1.5 |
+| PYSEC-2026-1471 | Sandbox escape via `|attr` filter: an attacker controlling template content can use the `|attr` filter to obtain a reference to a string's plain `format` method, bypassing the sandbox and enabling arbitrary Python code execution | 3.1.6 |
+
+> **Note:** All four Jinja2 entries carry PYSEC-2026-series identifiers. These IDs are assigned sequentially by the PyPI advisory database and do not necessarily correspond to the calendar year of disclosure. The vulnerability details were verified against the pip-audit output at the time of this audit.
 
 ### Werkzeug 0.15.6
 
 | CVE / ID | Description | Fix Version |
 |----------|------------|-------------|
-| PYSEC-2022-203 | Cookie parsing vulnerability | 2.1.1 |
-| PYSEC-2023-57 | High severity vulnerability | 2.2.3 |
-| PYSEC-2023-58 | High severity vulnerability | 2.2.3 |
-| PYSEC-2023-221 | Known vulnerability | 2.3.8 or 3.0.1 |
-| PYSEC-2026-2043 | Known vulnerability | 3.0.3 |
-| PYSEC-2026-2044 | Known vulnerability | 3.1.5 |
-| PYSEC-2026-2045 | Known vulnerability | 3.0.6 |
-| PYSEC-2026-2046 | Known vulnerability | 3.1.4 |
-| PYSEC-2026-2320 | Known vulnerability | 3.1.6 |
-| CVE-2026-102598 | Known vulnerability | 3.1.9 |
+| PYSEC-2022-203 | HTTP request smuggling via improper parsing of HTTP requests, allowing attackers to include multiple requests in a single body (disputed by vendor as only applicable in unsupported development configurations) | 2.1.1 |
+| PYSEC-2023-57 | Nameless cookie parsing vulnerability: browsers may allow "nameless" cookies like `=value` instead of `key=value`, and a compromised application on an adjacent subdomain can exploit this to set cookies that Werkzeug misparses, accepting a bad cookie value under a valid cookie key | 2.2.3 |
+| PYSEC-2023-58 | Multipart form data DoS: the multipart parser will parse an unlimited number of parts, including file parts, allowing an attacker to cause CPU and memory exhaustion by sending crafted multipart data | 2.2.3 |
+| PYSEC-2023-221 | Multipart boundary parsing DoS: an uploaded file starting with CR or LF followed by megabytes of data without those characters causes all bytes to be appended chunk by chunk into an internal bytearray while the boundary lookup runs on a growing buffer, causing CPU exhaustion | 2.3.8 or 3.0.1 |
+| PYSEC-2026-2043 | Debugger cross-origin access: the Werkzeug debugger can allow an attacker to execute code on a developer's machine by getting the developer to interact with a domain/subdomain they control and enter the debugger PIN | 3.0.3 |
+| PYSEC-2026-2045 | UNC path bypass in `safe_join`: on Python < 3.11 on Windows, `os.path.isabs()` does not catch UNC paths like `//server/share`, allowing `safe_join()` to produce an unsafe path that enables unintended data access | 3.0.6 |
+| PYSEC-2026-2046 | Windows device name bypass in `safe_join`: `safe_join` allows path segments with Windows device names (e.g., `CON`, `AUX`), causing `send_from_directory` to open such files successfully but hang indefinitely on read | 3.1.4 |
+| PYSEC-2026-2044 | Windows device name bypass with extensions in `safe_join`: extends the prior device name vulnerability to cover compound extensions (e.g., `CON.txt.html`) and trailing spaces (e.g., `CON `), which the earlier fix did not handle | 3.1.5 |
+| PYSEC-2026-2320 | Windows device name bypass with path segments in `safe_join`: extends the prior device name fixes to cover paths with multiple segments (e.g., `example/NUL`), which the earlier filtering did not account for | 3.1.6 |
+| CVE-2026-102598 | Windows NTFS ADS marker bypass in `safe_join`: `safe_join` allows Windows device names with an empty NTFS Alternate Data Stream marker (e.g., `NUL:`), causing `send_from_directory` to open the device successfully but hang indefinitely on read | 3.1.9 |
+
+> **Note:** Several Werkzeug entries carry PYSEC-2026-series identifiers, and CVE-2026-102598 also uses a 2026-year prefix. These IDs are assigned sequentially by their respective advisory databases and do not necessarily correspond to the calendar year of disclosure. The vulnerability details were verified against the pip-audit output at the time of this audit.
 
 ### Remediation
 
@@ -167,8 +173,8 @@ Werkzeug==3.1.9
 
 ### Issue 1: Debug Mode Truthy String Bug
 - **Severity:** HIGH
-- **Line:** 30
-- **Code:** `debug=os.getenv('FLASK_DEBUG', False)`
+- **Line:** 27
+- **Code:** `debug=os.getenv('FLASK_DEBUG',False)`
 - **Description:** `os.getenv()` returns a string when the environment variable is set. Any non-empty string (including the string `"False"`) is truthy in Python. If `FLASK_DEBUG` is set to `"False"`, `"0"`, or any other string, the debug mode will still be enabled because non-empty strings evaluate to `True` in a boolean context. Debug mode exposes the Werkzeug debugger, which allows arbitrary code execution on the server.
 - **Recommendation:** Use an explicit check for the string value:
   ```python
@@ -177,14 +183,14 @@ Werkzeug==3.1.9
 
 ### Issue 2: Binding to All Interfaces
 - **Severity:** MEDIUM
-- **Line:** 31
+- **Line:** 28
 - **Code:** `host='0.0.0.0'`
 - **Description:** The application binds to all network interfaces. While necessary for containerized deployments, this means the Flask development server is accessible from any network. Combined with the debug mode issue above, this could expose the Werkzeug debugger to the network.
 - **Recommendation:** Ensure debug mode is strictly disabled in production. For container use, `0.0.0.0` is acceptable but should only be used with a production WSGI server (e.g., Gunicorn), not the Flask development server.
 
 ### Issue 3: User Input Passed Directly to Template
 - **Severity:** LOW (mitigated by Jinja2 autoescaping)
-- **Line:** 14
+- **Line:** 12
 - **Code:** `name = flask.request.args.get("name", "Flask-demo")`
 - **Description:** The `name` query parameter is taken directly from user input and passed to the template. Jinja2 autoescapes by default for HTML templates, which mitigates basic XSS. However, if autoescaping is ever disabled or the value is used in a non-HTML context, this would be an XSS vulnerability.
 - **Recommendation:** Explicitly validate and sanitize the `name` input. Consider limiting the allowed characters and length.
@@ -196,7 +202,7 @@ Werkzeug==3.1.9
 
 ### Issue 5: No Production WSGI Server
 - **Severity:** MEDIUM
-- **Line:** 29
+- **Line:** 26
 - **Code:** `app.run(...)`
 - **Description:** The application uses the built-in Flask development server, which is not designed for production use. It is single-threaded, not hardened against attacks, and lacks production features such as process management, graceful restarts, and proper logging.
 - **Recommendation:** Use a production WSGI server such as Gunicorn:
@@ -218,12 +224,12 @@ Werkzeug==3.1.9
   USER appuser
   ```
 
-### Issue 2: Unpinned Flask Installation
+### Issue 2: Requirements File Ignored - Build/Dependency Disconnect
 - **Severity:** HIGH
 - **Line:** 4
 - **Code:** `pip install flask`
-- **Description:** The Dockerfile installs Flask without a version pin (`pip install flask`), ignoring the `requirements.txt` entirely. This means every build may install a different version of Flask and its dependencies, leading to non-reproducible builds and potential introduction of vulnerable or incompatible versions.
-- **Recommendation:** Replace with:
+- **Description:** A `requirements.txt` file exists in `flask-docker-app/` with six pinned packages (Flask 1.1.1, Werkzeug 0.15.6, etc.), but the Dockerfile ignores it entirely and instead runs `pip install flask` with no version constraint. This creates a disconnect between the documented dependencies and what is actually installed in the container: every build gets whatever Flask version is current on PyPI along with its latest transitive dependencies, which may differ from what `requirements.txt` specifies. This means the Python vulnerability audit against `requirements.txt` may not accurately reflect what is actually running in production, and builds are not reproducible.
+- **Recommendation:** Replace the bare `pip install flask` with installation from the requirements file, and update the pinned versions to current releases:
   ```dockerfile
   COPY requirements.txt /app/requirements.txt
   RUN pip install --no-cache-dir -r /app/requirements.txt
@@ -289,7 +295,7 @@ Werkzeug==3.1.9
 
 ### Issue 1: Overly Broad IAM Policy with Wildcard Resources
 - **Severity:** HIGH
-- **Line:** 73
+- **Line:** 69
 - **Code:** `resources: ['*']`
 - **Description:** The execution role policy grants ECR and CloudWatch Logs permissions to all resources (`'*'`). While some actions like `ecr:GetAuthorizationToken` require `'*'` as the resource, other actions like `ecr:BatchGetImage` and `ecr:GetDownloadUrlForLayer` should be scoped to the specific ECR repository. This violates the principle of least privilege.
 - **Recommendation:** Scope the IAM policy to specific resources:
@@ -317,8 +323,8 @@ Werkzeug==3.1.9
 
 ### Issue 2: Public Load Balancer Without HTTPS
 - **Severity:** HIGH
-- **Line:** 97
-- **Code:** `publicLoadBalancer: true, listenerPort: 80`
+- **Lines:** 102-104
+- **Code:** `publicLoadBalancer: true, ... listenerPort: 80`
 - **Description:** The Application Load Balancer is public-facing and only listens on HTTP port 80. There is no HTTPS listener or TLS certificate configured. All traffic between users and the load balancer is unencrypted, exposing data in transit to interception.
 - **Recommendation:** Add an HTTPS listener with an ACM certificate:
   ```typescript
@@ -334,10 +340,10 @@ Werkzeug==3.1.9
   ```
 
 ### Issue 3: Auto-Scaling Threshold Too Low
-- **Severity:** MEDIUM
-- **Line:** 105
+- **Severity:** LOW
+- **Line:** 112
 - **Code:** `targetUtilizationPercent: 10`
-- **Description:** The CPU utilization target for auto-scaling is set to 10%, which is unreasonably low. This will cause the service to scale up to 6 tasks even under minimal load, wasting resources and increasing costs. The low threshold also makes the service susceptible to cost-based denial-of-service attacks.
+- **Description:** The CPU utilization target for auto-scaling is set to 10%, which is unreasonably low. This will cause the service to scale up to 6 tasks even under minimal load, leading to unnecessary cost. While any auto-scaling service behind a public ALB is subject to cost implications from traffic spikes regardless of the threshold, a 10% target amplifies the cost impact since scaling triggers far earlier than needed. For a sample/demo project, this is primarily a cost waste concern rather than a direct security vulnerability.
 - **Recommendation:** Set a more reasonable CPU utilization target, such as 50-70%:
   ```typescript
   scaling.scaleOnCpuUtilization('cpuscaling', {
@@ -349,7 +355,7 @@ Werkzeug==3.1.9
 
 ### Issue 4: Hardcoded Default GitHub Username
 - **Severity:** MEDIUM
-- **Line:** 18
+- **Line:** 19
 - **Code:** `default: "EffeArts"`
 - **Description:** The CloudFormation parameter for the GitHub username has a hardcoded default value. If the stack is deployed without overriding this parameter, it will attempt to connect to a specific user's repository. This is a configuration concern rather than a direct vulnerability but could lead to unintended connections.
 - **Recommendation:** Remove the default value or use a placeholder that clearly requires user input:
@@ -362,7 +368,7 @@ Werkzeug==3.1.9
 
 ### Issue 5: Deprecated VPC CIDR Property
 - **Severity:** LOW
-- **Line:** 45
+- **Line:** 41
 - **Code:** `cidr: '10.0.0.0/16'`
 - **Description:** The `cidr` property on the VPC construct is deprecated in newer versions of CDK. While not a security vulnerability in itself, using deprecated APIs may lead to unexpected behavior in future CDK versions.
 - **Recommendation:** Use `ipAddresses` instead:
@@ -397,7 +403,7 @@ Werkzeug==3.1.9
 
 ### Issue 8: Deprecated Build Image
 - **Severity:** MEDIUM
-- **Line:** 122
+- **Line:** 135
 - **Code:** `buildImage: codebuild.LinuxBuildImage.AMAZON_LINUX_2_2`
 - **Description:** The CodeBuild project uses `AMAZON_LINUX_2_2`, which is an older build image. Using outdated build images means the build environment itself may contain unpatched vulnerabilities.
 - **Recommendation:** Update to a current Amazon Linux build image:
@@ -405,12 +411,49 @@ Werkzeug==3.1.9
   buildImage: codebuild.LinuxBuildImage.STANDARD_7_0
   ```
 
-### Issue 9: Non-Null Assertion on Project Role
-- **Severity:** LOW
-- **Line:** 171
-- **Code:** `ecrRepo.grantPullPush(project.role!)`
-- **Description:** The non-null assertion operator (`!`) is used on `project.role`, which could cause a runtime error if the role is null. This is more of a code quality issue but could cause deployment failures.
-- **Recommendation:** Add a null check or use optional chaining with an appropriate fallback.
+### Issue 9: CodeBuild IAM Policy Scopes ECR Actions to Wrong Resource Type
+- **Severity:** HIGH
+- **Lines:** 250-258
+- **Code:**
+  ```typescript
+  project.addToRolePolicy(new iam.PolicyStatement({
+    actions: [
+      "ecs:describecluster",
+      "ecr:getauthorizationtoken",
+      "ecr:batchchecklayeravailability",
+      "ecr:batchgetimage",
+      "ecr:getdownloadurlforlayer"
+    ],
+    resources: [`${cluster.clusterArn}`],
+  }));
+  ```
+- **Description:** The CodeBuild project's IAM policy grants ECR read actions (`ecr:batchchecklayeravailability`, `ecr:batchgetimage`, `ecr:getdownloadurlforlayer`) scoped to the ECS cluster ARN (`cluster.clusterArn`) instead of the ECR repository ARN. IAM evaluates resource types, so these ECR actions will not match against a cluster ARN and are effectively dead permissions. The `ecs:describecluster` action is correctly scoped to the cluster, but it should be in a separate policy statement from the ECR actions. This is both a security misconfiguration (mixing resource types in a single statement) and a functional bug.
+- **Recommendation:** Split into separate policy statements with correct resource scoping:
+  ```typescript
+  project.addToRolePolicy(new iam.PolicyStatement({
+    actions: ["ecs:describecluster"],
+    resources: [`${cluster.clusterArn}`],
+  }));
+  project.addToRolePolicy(new iam.PolicyStatement({
+    actions: [
+      "ecr:getauthorizationtoken",
+      "ecr:batchchecklayeravailability",
+      "ecr:batchgetimage",
+      "ecr:getdownloadurlforlayer"
+    ],
+    resources: [ecrRepo.repositoryArn],
+  }));
+  ```
+
+### Issue 10: Shell Command Substitution in BuildSpec
+- **Severity:** MEDIUM
+- **Line:** 167
+- **Code:** `'$(aws ecr get-login --no-include-email)'`
+- **Description:** The CodeBuild buildspec uses shell command substitution (`$(...)`) to execute the output of `aws ecr get-login`. This runs in a CodeBuild environment where environment variables (`cluster_name`, `ecr_repo_uri`) are injected from CDK constructs via CloudFormation parameters. If an attacker could influence those environment variable values (for example, through a compromised CloudFormation parameter or a supply chain attack on the CDK constructs), the shell expansion could become a command injection vector. While the risk is limited by the CodeBuild execution environment, shell expansion of untrusted input is a recognized anti-pattern in CI/CD pipelines. Note that `aws ecr get-login` is also deprecated in favor of `aws ecr get-login-password`.
+- **Recommendation:** Use the newer, safer ECR login method that avoids shell expansion:
+  ```bash
+  aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ecr_repo_uri
+  ```
 
 ---
 
@@ -418,7 +461,7 @@ Werkzeug==3.1.9
 
 ### Issue 1: Loading Script Over HTTP (Not HTTPS)
 - **Severity:** HIGH
-- **Line:** 18
+- **Line:** 16
 - **Code:** `<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>`
 - **Description:** The template loads a JavaScript file over unencrypted HTTP from `html5shim.googlecode.com`. This is a critical security issue for several reasons:
   1. **Man-in-the-middle attack:** An attacker on the network can intercept and modify the JavaScript being loaded, injecting malicious code.
@@ -431,7 +474,7 @@ Werkzeug==3.1.9
 
 ### Issue 2: Template Variables Could Enable XSS
 - **Severity:** LOW (mitigated by Jinja2 autoescaping)
-- **Lines:** 23-26
+- **Lines:** 22-25
 - **Code:**
   ```html
   <h1>{{ name }}</h1>
@@ -448,8 +491,8 @@ Werkzeug==3.1.9
 - **Recommendation:** Move all visible content inside the `<body>` tag. Restructure the template to have valid HTML5 structure.
 
 ### Issue 4: No Content Security Policy
-- **Severity:** MEDIUM
-- **Description:** The HTML template does not include a Content Security Policy (CSP) meta tag, and no CSP headers are set by the Flask application. CSP helps prevent XSS and other injection attacks by controlling which resources the browser is allowed to load.
+- **Severity:** LOW
+- **Description:** The HTML template does not include a Content Security Policy (CSP) meta tag, and no CSP headers are set by the Flask application. CSP helps prevent XSS and other injection attacks by controlling which resources the browser is allowed to load. However, since this is a demo/sample application where template variables are either server-controlled or autoescaped by Jinja2, the practical risk is limited.
 - **Recommendation:** Add a CSP meta tag to the template or configure CSP headers in the Flask app:
   ```html
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline';">
@@ -461,34 +504,35 @@ Werkzeug==3.1.9
 
 ### Priority 1: Critical (Immediate Action Required)
 
-1. **Update Python dependencies** - All packages have known CVEs. Update `requirements.txt` to latest versions and fix the Dockerfile to install from `requirements.txt` instead of using bare `pip install flask`.
-2. **Fix the debug mode bug** in `app.py` (line 30) - The current code will enable debug mode (and the interactive debugger) if `FLASK_DEBUG` is set to any non-empty string, including `"False"`.
-3. **Fix HTTP script loading** in `hello.html` (line 18) - Remove or replace the dead `http://html5shim.googlecode.com` script reference.
+1. **Update Python dependencies** - All packages have known CVEs. Update `requirements.txt` to latest versions and fix the Dockerfile to install from `requirements.txt` instead of using bare `pip install flask`. The current Dockerfile ignores the requirements file entirely, creating a disconnect between documented and actual dependencies.
+2. **Fix the debug mode bug** in `app.py` (line 27) - The current code will enable debug mode (and the interactive debugger) if `FLASK_DEBUG` is set to any non-empty string, including `"False"`.
+3. **Fix HTTP script loading** in `hello.html` (line 16) - Remove or replace the dead `http://html5shim.googlecode.com` script reference.
 4. **Add a non-root user** to the Dockerfile - Running as root significantly increases the blast radius of any container escape.
 
 ### Priority 2: High (Address Within a Sprint)
 
 5. **Update npm dependencies** - Run `npm audit fix` and consider upgrading `aws-cdk-lib` to the latest version. The current version has 7 known advisories including OS command injection and overly permissive trust policies.
-6. **Scope IAM policies** in the CDK stack - Replace `resources: ['*']` with specific resource ARNs where possible.
+6. **Scope IAM policies** in the CDK stack - Replace `resources: ['*']` with specific resource ARNs where possible. Also fix the CodeBuild IAM policy (lines 250-258) that incorrectly scopes ECR actions to the ECS cluster ARN instead of the ECR repository ARN.
 7. **Add HTTPS** to the load balancer - All public-facing traffic should be encrypted with TLS.
 8. **Fix the curl-pipe-to-python anti-pattern** in the Dockerfile - Use system packages or verified package installation.
 9. **Use a production WSGI server** (Gunicorn/uWSGI) instead of the Flask development server.
+10. **Replace deprecated ECR login in buildspec** - The `$(aws ecr get-login --no-include-email)` command uses shell expansion and is deprecated. Switch to `aws ecr get-login-password` piped to `docker login`.
 
 ### Priority 3: Medium (Address in Next Release)
 
-10. **Create a `.dockerignore` file** to prevent unnecessary files from being copied into the container.
-11. **Pin the base Docker image** to a specific digest for reproducible builds.
-12. **Add a `HEALTHCHECK`** to the Dockerfile.
-13. **Enable VPC Flow Logs** for network traffic visibility.
-14. **Fix the auto-scaling threshold** from 10% to a reasonable value (50-70%).
-15. **Add Content Security Policy** headers to the Flask application.
+11. **Create a `.dockerignore` file** to prevent unnecessary files from being copied into the container.
+12. **Pin the base Docker image** to a specific digest for reproducible builds.
+13. **Add a `HEALTHCHECK`** to the Dockerfile.
+14. **Enable VPC Flow Logs** for network traffic visibility.
+15. **Fix the auto-scaling threshold** from 10% to a reasonable value (50-70%) to avoid unnecessary cost.
 16. **Update the CodeBuild image** from AMAZON_LINUX_2_2 to a current version.
 17. **Enable Container Insights** on the ECS cluster.
 
 ### Priority 4: Low (Best Practice Improvements)
 
-18. **Add CSRF protection** to the Flask app if form endpoints are ever added.
-19. **Fix the HTML structure** - Move content inside `<body>` tags.
-20. **Remove deprecated CDK API usage** (`cidr` property on VPC).
-21. **Add input validation** for the `name` query parameter in the Flask app.
-22. **Update TypeScript** from 3.9.x to the latest version for improved type checking and security.
+18. **Add Content Security Policy** headers to the Flask application as a defense-in-depth measure.
+19. **Add CSRF protection** to the Flask app if form endpoints are ever added.
+20. **Fix the HTML structure** - Move content inside `<body>` tags.
+21. **Remove deprecated CDK API usage** (`cidr` property on VPC).
+22. **Add input validation** for the `name` query parameter in the Flask app.
+23. **Update TypeScript** from 3.9.x to the latest version for improved type checking and security.
