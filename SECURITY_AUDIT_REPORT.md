@@ -12,17 +12,19 @@ This audit examined both the CDK infrastructure project (`cdk-v2/`) and the Flas
 
 **Key Findings:**
 
-| Category | Critical | High | Moderate | Low | Info |
-|---|---|---|---|---|---|
-| npm dependencies (CDK) | 2 | 11 | 5 | 13 | 0 |
-| pip dependencies (Flask) | 0 | 4 | 7 | 0 | 0 |
-| Code security issues | 2 | 5 | 4 | 2 | 0 |
+| Category | Critical | High | Moderate | Low | Info | Total |
+|---|---|---|---|---|---|---|
+| npm dependencies (CDK) | 2 | 11 | 5 | 13 | 0 | 31 |
+| pip dependencies (Flask) | 0 | 5 | 11 | 0 | 0 | 16 |
+| Code security issues | 0 | 4 | 6 | 6 | 1 | 17 |
+
+> **Important note on pip-audit results:** The `requirements.txt` file is not actually used by the Dockerfile, which instead runs `pip install flask` without version pinning. This means the pip-audit findings below reflect the versions declared in `requirements.txt`, not necessarily what is running in the built container. See finding 3.3.3 for details.
 
 The most urgent issues are:
 
-1. **Severely outdated Python dependencies** with 29 known vulnerabilities across Flask, Jinja2, and Werkzeug. These packages are 4-6 major versions behind current releases.
+1. **Severely outdated Python dependencies** with 16 unique advisories across Flask, Jinja2, and Werkzeug (pip-audit reports 29 raw findings because some advisories map to multiple fix versions). These packages are 4-6 major versions behind current releases.
 2. **31 npm vulnerabilities** in the CDK project, including 2 critical issues (arbitrary code execution via `@babel/traverse`, unsafe randomness in `form-data`).
-3. **Dockerfile security concerns** including running as root, downloading pip installer over plain HTTP, and unpinned package versions.
+3. **Dockerfile security concerns** including running as root, unverified pip bootstrap script, unpinned package versions, and not using the `requirements.txt` file.
 4. **IAM policy with wildcard resources** in the CDK stack, granting overly broad permissions.
 
 ---
@@ -89,6 +91,8 @@ All packages in `cdk-v2/package.json` are significantly outdated. The project wa
 
 #### Low Severity (13)
 
+The 13 low-severity advisories span the following packages. Four direct or prominent transitive dependencies are detailed below; the remaining 9 are advisories against deeply nested transitive dev dependencies (primarily in the jest and ts-jest chains).
+
 | Package | Advisory | Description |
 |---|---|---|
 | `@babel/core` <= 7.29.0 | [GHSA-4x5r-pxfx-6jf8](https://github.com/advisories/GHSA-4x5r-pxfx-6jf8) | Arbitrary File Read via sourceMappingURL Comment |
@@ -96,7 +100,7 @@ All packages in `cdk-v2/package.json` are significantly outdated. The project wa
 | `deepmerge` >= 4.2.0 | [GHSA-gcqx-w48m-w2h4](https://github.com/advisories/GHSA-gcqx-w48m-w2h4) | Prototype poisoning of returned objects |
 | `diff` 4.0.0 - 4.0.3 | [GHSA-73rr-hh4g-fpgx](https://github.com/advisories/GHSA-73rr-hh4g-fpgx) | DoS in parsePatch and applyPatch |
 
-*Note: Some low-severity items are transitive dependencies of jest and other dev-only packages.*
+*The remaining 9 low-severity advisories affect transitive dev dependencies of jest and ts-jest (e.g., `http-proxy-agent`, `agent-base`, `socks`, `make-dir`, `p-retry`, and others). These do not affect the CDK runtime or deployed infrastructure.*
 
 ---
 
@@ -115,11 +119,13 @@ All Python packages in `flask-docker-app/requirements.txt` are severely outdated
 | `MarkupSafe` | 1.1.1 | 3.0.4 | **2 major versions** |
 | `Werkzeug` | 0.15.6 | 3.1.9 | **3 major versions** |
 
-### 2.2 pip-audit Vulnerabilities (29 findings across 3 packages)
+### 2.2 pip-audit Vulnerabilities (16 unique advisories across 3 packages)
 
-Results from `pip-audit -r flask-docker-app/requirements.txt`:
+Results from `pip-audit -r flask-docker-app/requirements.txt`. Note: `pip-audit` reported 29 raw findings because a single advisory can map to multiple fix versions; the counts below reflect unique PYSEC advisory IDs.
 
-#### Flask 1.1.1 (3 unique vulnerabilities)
+> **Caveat:** The Dockerfile does not use `requirements.txt`. It runs `pip install flask` (unpinned), so the container may have different versions than those audited here. See finding 3.3.3.
+
+#### Flask 1.1.1 (2 unique vulnerabilities)
 
 | ID | Fix Version | Severity | Description |
 |---|---|---|---|
@@ -279,15 +285,15 @@ if __name__ == '__main__':
 
 **Recommendation:** Never enable debug mode in production. If environment-variable-based configuration is needed, explicitly compare against known safe values (e.g., `os.getenv('FLASK_DEBUG', '').lower() == 'true'`). Better yet, remove the debug flag entirely and use Flask's standard `FLASK_DEBUG` environment variable mechanism with `flask run`.
 
-#### 3.2.2 Binding to All Network Interfaces - **MODERATE**
+#### 3.2.2 Binding to All Network Interfaces - **LOW**
 
 ```python
 app.run(host='0.0.0.0', port=5000)
 ```
 
-**Issue:** Binding to `0.0.0.0` makes the application accessible on all network interfaces. In a container environment this is generally expected and necessary, but it should be coupled with proper network-level security controls.
+**Issue:** Binding to `0.0.0.0` makes the application accessible on all network interfaces. This is expected and necessary for containerized deployments where the application must be reachable from outside the container network namespace.
 
-**Recommendation:** This is acceptable for containerized deployments. Ensure the ECS task security groups restrict inbound traffic to the ALB only.
+**Recommendation:** This is acceptable for containerized deployments and is not a vulnerability in context. Ensure the ECS task security groups restrict inbound traffic to the ALB only.
 
 #### 3.2.3 Potential XSS via User Input - **MODERATE**
 
@@ -305,11 +311,11 @@ In `hello.html`:
 
 **Recommendation:** Add input validation and length limits on the `name` parameter. Consider sanitizing or rejecting unexpected characters.
 
-#### 3.2.4 No CSRF Protection - **MODERATE**
+#### 3.2.4 No CSRF Protection - **LOW** (Future Consideration)
 
-**Issue:** The Flask application does not use Flask-WTF or any other CSRF protection mechanism. While the current app only has a GET endpoint, if POST endpoints are added in the future they would be vulnerable to cross-site request forgery.
+**Issue:** The Flask application does not use Flask-WTF or any other CSRF protection mechanism. The current app only has a single GET endpoint, so CSRF is not an active risk today (GET requests are safe by HTTP specification). However, if POST or other state-changing endpoints are added in the future without adding CSRF protection first, they would be vulnerable to cross-site request forgery.
 
-**Recommendation:** Install and configure Flask-WTF with CSRF protection before adding any state-changing endpoints.
+**Recommendation:** Install and configure Flask-WTF with CSRF protection before adding any state-changing endpoints. This is a preventive measure, not a current vulnerability.
 
 ---
 
@@ -332,26 +338,29 @@ RUN useradd -r -s /bin/false appuser
 USER appuser
 ```
 
-#### 3.3.2 Downloading pip Installer over HTTP - **HIGH**
+#### 3.3.2 Unverified pip Bootstrap Script - **HIGH**
 
 ```dockerfile
 curl -O https://bootstrap.pypa.io/get-pip.py && \
 python3 get-pip.py
 ```
 
-**Issue:** While the URL uses HTTPS, the `curl` command lacks the `--fail` flag, meaning a failed download (e.g., HTTP error or redirect to an error page) would still be passed to `python3` for execution. Additionally, downloading and executing an arbitrary script during build time is a supply chain risk. There is no checksum verification.
+**Issue:** The Dockerfile downloads and executes a remote script to install pip. Although the URL uses HTTPS, the `curl` command lacks the `--fail` flag, meaning a failed download (e.g., HTTP error or redirect to an error page) would still be passed to `python3` for execution. Additionally, downloading and executing an arbitrary script during build time without checksum verification is a supply chain risk.
 
 **Recommendation:** Use the system package manager to install pip (`yum install python3-pip`) or verify the checksum of the downloaded script. Always use `curl --fail` to detect download errors.
 
-#### 3.3.3 Unpinned Flask Installation - **MODERATE**
+#### 3.3.3 Unpinned Flask Installation / `requirements.txt` Not Used - **MODERATE**
 
 ```dockerfile
 pip install flask
 ```
 
-**Issue:** Flask is installed without a version pin. The Dockerfile installs whatever the latest Flask version is at build time, making builds non-reproducible and potentially introducing breaking changes or vulnerabilities. Meanwhile, `requirements.txt` pins Flask at 1.1.1 but is not used in the `pip install` command in the Dockerfile.
+**Issue:** Flask is installed without a version pin and the Dockerfile does not reference `requirements.txt` at all. This has two consequences:
 
-**Recommendation:** Use the requirements.txt file in the Dockerfile: `pip install -r requirements.txt`. Pin all dependencies to specific versions for reproducibility. Better yet, update the requirements to current secure versions first.
+1. **The pip-audit results in section 2 may not reflect production.** The `requirements.txt` file pins Flask at 1.1.1 with its 2019-era transitive dependencies, but the container installs whatever Flask version is current at build time. The 16 advisories documented above were found by auditing `requirements.txt`, not the actual container contents.
+2. **Builds are non-reproducible.** Different builds at different times will install different Flask versions, potentially introducing breaking changes or new vulnerabilities.
+
+**Recommendation:** Use the requirements file in the Dockerfile: `COPY requirements.txt . && pip install -r requirements.txt`. Update the pinned versions to current secure releases first (Flask >= 3.1.3, Werkzeug >= 3.1.9, Jinja2 >= 3.1.6). This ensures both reproducible builds and a clear audit trail.
 
 #### 3.3.4 No HEALTHCHECK - **LOW**
 
@@ -394,9 +403,9 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 | # | Action | Component | Rationale |
 |---|---|---|---|
-| 1 | **Update Python dependencies** to current versions: Flask >= 3.1.3, Werkzeug >= 3.1.9, Jinja2 >= 3.1.6, MarkupSafe >= 3.0.4, itsdangerous >= 2.2.0, Click >= 8.5.0 | Flask App | 29 known vulnerabilities including DoS, request smuggling, remote code execution (debugger), and sandbox escapes |
+| 1 | **Update Python dependencies** to current versions: Flask >= 3.1.3, Werkzeug >= 3.1.9, Jinja2 >= 3.1.6, MarkupSafe >= 3.0.4, itsdangerous >= 2.2.0, Click >= 8.5.0 | Flask App | 16 unique advisories including DoS, request smuggling, remote code execution (debugger), and sandbox escapes |
 | 2 | **Update `aws-cdk-lib`** to >= 2.275.0 | CDK | 7 known vulnerabilities including OS command injection, overly permissive trust policies, and sensitive info logging |
-| 3 | **Fix Dockerfile** to not run as root, pin package versions, and use `requirements.txt` | Dockerfile | Container escape risk, non-reproducible builds, supply chain risk |
+| 3 | **Fix Dockerfile** to not run as root, verify pip bootstrap script, pin package versions, and use `requirements.txt` | Dockerfile | Container escape risk, non-reproducible builds, supply chain risk, pip-audit/production version mismatch |
 | 4 | **Remove debug mode** or fix the environment variable parsing in `app.py` | Flask App | Enables interactive debugger with code execution in production |
 
 ### Priority 2 - High (Address Soon)
@@ -414,7 +423,7 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 | # | Action | Component | Rationale |
 |---|---|---|---|
 | 10 | **Add input validation** on the `name` query parameter | Flask App | Defense in depth against XSS |
-| 11 | **Add CSRF protection** via Flask-WTF before adding POST endpoints | Flask App | Prevents cross-site request forgery |
+| 11 | **Add CSRF protection** via Flask-WTF before adding POST endpoints | Flask App | Preventive measure for future state-changing endpoints |
 | 12 | **Use commit SHA as Docker image tag** instead of `latest` | CDK Stack | Enables proper deployment traceability and rollbacks |
 | 13 | **Add a `.dockerignore` file** | Dockerfile | Reduces image size, prevents leaking dev artifacts |
 | 14 | **Remove unused `clusteradmin` IAM role** | CDK Stack | Dead code that creates unnecessary IAM resources |
@@ -434,11 +443,13 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 ### B. pip-audit summary
 
 ```
-Found 29 known vulnerabilities in 3 packages
-- Flask 1.1.1: 3 unique vulnerabilities (PYSEC-2023-62, PYSEC-2026-2151)
-- Jinja2 2.11.3: 4 unique vulnerabilities (PYSEC-2026-1471, PYSEC-2026-1473, PYSEC-2026-1474, PYSEC-2026-1475)
-- Werkzeug 0.15.6: 10 unique vulnerabilities (PYSEC-2022-203, PYSEC-2023-57, PYSEC-2023-58, PYSEC-2023-221, PYSEC-2026-2043, PYSEC-2026-2045, PYSEC-2026-2046, PYSEC-2026-2044, PYSEC-2026-2320, PYSEC-2026-4312)
+Found 29 known vulnerabilities in 3 packages (29 raw findings; 16 unique advisory IDs)
+- Flask 1.1.1: 2 unique advisories (PYSEC-2023-62, PYSEC-2026-2151)
+- Jinja2 2.11.3: 4 unique advisories (PYSEC-2026-1471, PYSEC-2026-1473, PYSEC-2026-1474, PYSEC-2026-1475)
+- Werkzeug 0.15.6: 10 unique advisories (PYSEC-2022-203, PYSEC-2023-57, PYSEC-2023-58, PYSEC-2023-221, PYSEC-2026-2043, PYSEC-2026-2045, PYSEC-2026-2046, PYSEC-2026-2044, PYSEC-2026-2320, PYSEC-2026-4312)
 ```
+
+*Note: pip-audit counts each (advisory, fix-version) pair as a separate finding. A single PYSEC ID that can be fixed at multiple version thresholds is counted multiple times in the raw output, which is why the raw count (29) exceeds the unique advisory count (16).*
 
 ### C. Tools Used
 
